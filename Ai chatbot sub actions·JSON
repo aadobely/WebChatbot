@@ -1,0 +1,196 @@
+{
+  "name": "AI Chatbot - Sub (Actions)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# 🔧 AI Chatbot - Actions Sub-Workflow\n## v2.0 - Professional Edition\n\nHandles all external actions from the AI agent:\n\n1. **save_lead** → Google Sheets (with Priority & Customer Intent)\n2. **urgent_alert** → Email with HIGH/MEDIUM priority\n3. **conversation_summary** → End-of-chat email recap\n\n### Google Sheet Columns (create in this exact order):\n`Timestamp | Name | Phone | Email | Service Interest | Customer Intent | Priority | Notes | Session ID | Source`\n\n### ⚠️ Setup Required:\n- Replace `YOUR_GOOGLE_SHEET_ID` in Google Sheets node\n- Replace `YOUR_EMAIL@gmail.com` in both Gmail nodes\n- Add Google Sheets OAuth credential\n- Add Gmail OAuth credential\n- Change timezone in Extract Query Data node (default: America/Toronto)\n\n**Author**: Adobely (adobely.com)\n**Version**: 2.0",
+        "height": 440,
+        "width": 480,
+        "color": 6
+      },
+      "id": "086d1dda-675b-444e-8ae8-0647964b28e0",
+      "name": "📋 Sub-Workflow Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [0, -80],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "id": "2b704a61-382c-4ad5-a25d-ba9c020ad13e",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [112, 320],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract query data from tool call - v2.0\n// Fixes: Timestamp format, Session ID resolution, adds Priority & Customer Intent\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const json = item.json;\n  let data = {};\n  \n  // Handle nested query object from toolWorkflow\n  const source = json.query || json;\n  \n  // Copy all fields from source\n  data.action = source.action || '';\n  data.name = source.name || '';\n  data.phone = source.phone || '';\n  data.email = source.email || '';\n  data.service_interest = source.service_interest || '';\n  data.notes = source.notes || '';\n  data.priority = source.priority || 'Normal';\n  data.customer_intent = source.customer_intent || source.service_interest || 'General Inquiry';\n  data.reason = source.reason || '';\n  data.customer_name = source.customer_name || source.name || '';\n  data.customer_phone = source.customer_phone || source.phone || '';\n  data.customer_email = source.customer_email || source.email || '';\n  data.message_summary = source.message_summary || '';\n  data.services_discussed = source.services_discussed || '';\n  data.key_points = source.key_points || '';\n  data.follow_up_needed = source.follow_up_needed || '';\n  data.conversation_summary = source.conversation_summary || '';\n  \n  // ====== SESSION ID FIX ======\n  // Use $execution.id as reliable identifier (never passes raw expressions)\n  data.sessionId = source.sessionId || $execution.id || 'unknown';\n  if (data.sessionId.includes('$json') || data.sessionId.includes('{{')) {\n    data.sessionId = $execution.id || 'exec-' + Date.now();\n  }\n  \n  // ====== TIMESTAMP FIX ======\n  // Uses JavaScript Date with timezone instead of Luxon (avoids YYYY vs yyyy bug)\n  // CHANGE THE TIMEZONE BELOW TO MATCH YOUR LOCATION\n  const now = new Date();\n  const local = new Date(now.toLocaleString('en-US', { timeZone: 'America/Toronto' }));\n  const pad = (n) => String(n).padStart(2, '0');\n  data.timestamp = `${local.getFullYear()}-${pad(local.getMonth()+1)}-${pad(local.getDate())} ${pad(local.getHours())}:${pad(local.getMinutes())}:${pad(local.getSeconds())}`;\n  \n  results.push({ json: data });\n}\n\nreturn results;"
+      },
+      "id": "08b24330-0ecc-48ef-87ef-0f6afc5b619b",
+      "name": "Extract Query Data",
+      "type": "n8n-nodes-base.code",
+      "position": [304, 320],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "version": 2, "caseSensitive": false, "typeValidation": "loose" },
+                "combinator": "and",
+                "conditions": [{ "operator": { "type": "string", "operation": "equals" }, "leftValue": "={{ $json.action }}", "rightValue": "save_lead" }]
+              },
+              "renameOutput": true, "outputKey": "save_lead"
+            },
+            {
+              "conditions": {
+                "options": { "version": 2, "caseSensitive": false, "typeValidation": "loose" },
+                "combinator": "and",
+                "conditions": [{ "operator": { "type": "string", "operation": "equals" }, "leftValue": "={{ $json.action }}", "rightValue": "urgent_alert" }]
+              },
+              "renameOutput": true, "outputKey": "urgent_alert"
+            },
+            {
+              "conditions": {
+                "options": { "version": 2, "caseSensitive": false, "typeValidation": "loose" },
+                "combinator": "and",
+                "conditions": [{ "operator": { "type": "string", "operation": "equals" }, "leftValue": "={{ $json.action }}", "rightValue": "conversation_summary" }]
+              },
+              "renameOutput": true, "outputKey": "conversation_summary"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "39450fa0-a034-4bdd-bd7d-d677418750fd",
+      "name": "Route by Action",
+      "type": "n8n-nodes-base.switch",
+      "position": [496, 320],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "ts", "name": "Timestamp", "type": "string", "value": "={{ $json.timestamp }}" },
+            { "id": "nm", "name": "Name", "type": "string", "value": "={{ $json.name }}" },
+            { "id": "ph", "name": "Phone", "type": "string", "value": "={{ $json.phone }}" },
+            { "id": "em", "name": "Email", "type": "string", "value": "={{ $json.email }}" },
+            { "id": "si", "name": "Service Interest", "type": "string", "value": "={{ $json.service_interest }}" },
+            { "id": "ci", "name": "Customer Intent", "type": "string", "value": "={{ $json.customer_intent }}" },
+            { "id": "pr", "name": "Priority", "type": "string", "value": "={{ $json.priority }}" },
+            { "id": "nt", "name": "Notes", "type": "string", "value": "={{ $json.notes }}" },
+            { "id": "sid", "name": "Session ID", "type": "string", "value": "={{ $json.sessionId }}" },
+            { "id": "src", "name": "Source", "type": "string", "value": "Chatbot" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "28147373-d1f4-4d87-9c60-428e1c49955f",
+      "name": "Prepare Sheet Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [608, 0]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "id" },
+        "sheetName": { "__rl": true, "mode": "name", "value": "Leads" },
+        "columns": { "mappingMode": "autoMapInputData" },
+        "options": { "cellFormat": "USER_ENTERED" }
+      },
+      "id": "09c29ce8-2697-44c4-9a21-ceac3117304b",
+      "name": "Save Lead to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [832, 0],
+      "typeVersion": 4.5
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [{ "id": "1", "name": "response", "type": "string", "value": "Lead saved successfully to Google Sheets" }]
+        },
+        "options": {}
+      },
+      "id": "a1389f6c-010e-4a7d-9a19-5e08da48b08a",
+      "name": "Lead Save Response",
+      "type": "n8n-nodes-base.set",
+      "position": [1056, 0],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL@gmail.com",
+        "subject": "=🚨 URGENT: {{ $json.priority }} Priority Alert - Chatbot",
+        "message": "=<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;\"><div style=\"max-width:600px;margin:auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.1);\"><div style=\"background:linear-gradient(135deg,#dc2626,#b91c1c);color:white;padding:25px;text-align:center;\"><h1 style=\"margin:0;font-size:24px;\">🚨 {{ $json.priority }} PRIORITY ALERT</h1></div><div style=\"padding:25px;\"><div style=\"margin-bottom:20px;padding:15px;background:#fef2f2;border-radius:8px;border-left:4px solid #dc2626;\"><div style=\"font-weight:bold;color:#991b1b;margin-bottom:8px;\">⚠️ Reason</div><div style=\"color:#1f2937;\">{{ $json.reason }}</div></div><div style=\"margin-bottom:20px;padding:15px;background:#f9fafb;border-radius:8px;border-left:4px solid #6b7280;\"><div style=\"font-weight:bold;color:#374151;margin-bottom:8px;\">👤 Customer Information</div><div style=\"color:#1f2937;\"><strong>Name:</strong> {{ $json.customer_name || 'Not provided' }}<br><strong>Phone:</strong> {{ $json.customer_phone || 'Not provided' }}<br><strong>Email:</strong> {{ $json.customer_email || 'Not provided' }}</div></div><div style=\"padding:15px;background:#f9fafb;border-radius:8px;border-left:4px solid #6b7280;\"><div style=\"font-weight:bold;color:#374151;margin-bottom:8px;\">💬 Message Summary</div><div style=\"color:#1f2937;\">{{ $json.message_summary }}</div></div><div style=\"margin-top:20px;padding:12px;background:#fef3c7;border-radius:8px;text-align:center;\"><strong style=\"color:#92400e;\">🔑 Session ID:</strong> <span style=\"color:#1f2937;\">{{ $json.sessionId }}</span></div></div><div style=\"background:#f3f4f6;padding:15px;text-align:center;font-size:12px;color:#6b7280;\">AI Chatbot Alert System • Powered by Adobely</div></div></body></html>",
+        "options": { "appendAttribution": false }
+      },
+      "id": "c53d645a-ae0f-409a-8d2e-4d1f247a92fa",
+      "name": "Send Urgent Alert Email",
+      "type": "n8n-nodes-base.gmail",
+      "position": [752, 320],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [{ "id": "1", "name": "response", "type": "string", "value": "Urgent alert sent to the team. They will respond immediately." }]
+        },
+        "options": {}
+      },
+      "id": "635af5ad-c539-40d7-9f51-e3d867500b4f",
+      "name": "Urgent Alert Response",
+      "type": "n8n-nodes-base.set",
+      "position": [976, 320],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL@gmail.com",
+        "subject": "=📋 Chat Summary: {{ $json.customer_name || 'Customer' }}",
+        "message": "=<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;\"><div style=\"max-width:600px;margin:auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.1);\"><div style=\"background:linear-gradient(135deg,#1e3a5f,#2563eb);color:white;padding:25px;text-align:center;\"><h1 style=\"margin:0;font-size:24px;\">📋 Conversation Summary</h1></div><div style=\"height:4px;background:linear-gradient(90deg,#fbbf24,#f59e0b);\"></div><div style=\"padding:25px;\"><div style=\"margin-bottom:20px;padding:15px;background:#f0f9ff;border-radius:8px;border-left:4px solid #2563eb;\"><div style=\"font-weight:bold;color:#1e40af;margin-bottom:8px;\">👤 Customer Information</div><div style=\"color:#1f2937;\"><strong>Name:</strong> {{ $json.customer_name || 'Not provided' }}<br><strong>Phone:</strong> {{ $json.customer_phone || 'Not provided' }}<br><strong>Email:</strong> {{ $json.customer_email || 'Not provided' }}</div></div><div style=\"margin-bottom:20px;padding:15px;background:#f9fafb;border-radius:8px;border-left:4px solid #6b7280;\"><div style=\"font-weight:bold;color:#374151;margin-bottom:8px;\">🔧 Services Discussed</div><div style=\"color:#1f2937;\">{{ $json.services_discussed || 'General inquiry' }}</div></div><div style=\"margin-bottom:20px;padding:15px;background:#f9fafb;border-radius:8px;border-left:4px solid #6b7280;\"><div style=\"font-weight:bold;color:#374151;margin-bottom:8px;\">📝 Key Points</div><div style=\"color:#1f2937;\">{{ $json.key_points || 'No specific points noted' }}</div></div><div style=\"padding:15px;background:#fef3c7;border-radius:8px;border:1px solid #f59e0b;\"><div style=\"font-weight:bold;color:#92400e;margin-bottom:8px;\">⚡ Follow-up Required</div><div style=\"color:#1f2937;\">{{ $json.follow_up_needed || 'No immediate follow-up needed' }}</div></div><div style=\"margin-top:20px;padding:15px;background:#f3f4f6;border-radius:8px;\"><div style=\"font-weight:bold;color:#374151;margin-bottom:8px;\">💬 Full Summary</div><div style=\"color:#1f2937;line-height:1.6;\">{{ $json.conversation_summary }}</div></div><div style=\"margin-top:15px;padding:12px;background:#e0e7ff;border-radius:8px;text-align:center;\"><strong style=\"color:#3730a3;\">🔑 Session ID:</strong> <span style=\"color:#1f2937;\">{{ $json.sessionId }}</span></div></div><div style=\"background:#1e3a5f;padding:15px;text-align:center;font-size:12px;color:#9ca3af;\">AI Chatbot Summary • Powered by Adobely</div></div></body></html>",
+        "options": { "appendAttribution": false }
+      },
+      "id": "066a55b5-2f94-42e8-bf30-01c4cf16eef6",
+      "name": "Send Conversation Summary Email",
+      "type": "n8n-nodes-base.gmail",
+      "position": [752, 528],
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [{ "id": "1", "name": "response", "type": "string", "value": "Conversation summary has been sent to the team for follow-up." }]
+        },
+        "options": {}
+      },
+      "id": "0f2a6917-a4d1-4953-8ab4-6c55a4ef1b93",
+      "name": "Summary Response",
+      "type": "n8n-nodes-base.set",
+      "position": [976, 528],
+      "typeVersion": 3.4
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [[{ "node": "Extract Query Data", "type": "main", "index": 0 }]] },
+    "Extract Query Data": { "main": [[{ "node": "Route by Action", "type": "main", "index": 0 }]] },
+    "Route by Action": {
+      "main": [
+        [{ "node": "Prepare Sheet Data", "type": "main", "index": 0 }],
+        [{ "node": "Send Urgent Alert Email", "type": "main", "index": 0 }],
+        [{ "node": "Send Conversation Summary Email", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Sheet Data": { "main": [[{ "node": "Save Lead to Google Sheets", "type": "main", "index": 0 }]] },
+    "Save Lead to Google Sheets": { "main": [[{ "node": "Lead Save Response", "type": "main", "index": 0 }]] },
+    "Send Urgent Alert Email": { "main": [[{ "node": "Urgent Alert Response", "type": "main", "index": 0 }]] },
+    "Send Conversation Summary Email": { "main": [[{ "node": "Summary Response", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true },
+  "pinData": {},
+  "tags": []
+}
