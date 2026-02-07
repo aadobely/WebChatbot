@@ -1,0 +1,160 @@
+{
+  "name": "AI Chatbot - Main",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# 🤖 AI Customer Service Chatbot\n## v2.0 - Professional Edition\n\n**Features:**\n- ✅ AI-powered customer support (Groq Llama 3.3 70B - FREE)\n- ✅ Structured lead collection (one field at a time)\n- ✅ Lead capture → Google Sheets (with Priority & Customer Intent)\n- ✅ Urgent alerts → Email\n- ✅ Conversation summaries → Email\n- ✅ Session-based memory (per user)\n- ✅ Bilingual support (any language)\n- ✅ Works for ANY business type\n\n**Author**: Adobely (adobely.com)\n**License**: MIT",
+        "height": 340,
+        "width": 420,
+        "color": 6
+      },
+      "id": "6d6b51ab-7203-4120-9183-4b3e3f601986",
+      "name": "📋 Workflow Info",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-320, 80],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## ⚙️ Setup Steps\n\n1. **Import Sub-Workflow FIRST** → note its ID\n2. Import this Main Workflow\n3. Replace `YOUR_SUB_WORKFLOW_ID` in all 3 Tool nodes\n4. Add **Groq API** key (free: console.groq.com)\n5. Add **Gmail OAuth** credential (in sub-workflow)\n6. Add **Google Sheets OAuth** credential (in sub-workflow)\n7. Create Google Sheet with columns:\n   `Timestamp | Name | Phone | Email | Service Interest | Customer Intent | Priority | Notes | Session ID | Source`\n8. Update **Sheet ID** in sub-workflow Google Sheets node\n9. Update **email address** in sub-workflow Gmail nodes\n10. Customize the AI Agent system message for YOUR business\n11. **Activate BOTH** workflows\n12. Test at: `/webhook/ai-chatbot/chat`",
+        "height": 380,
+        "width": 420,
+        "color": 4
+      },
+      "id": "abea7f3a-ec99-464a-b6ed-8ff23c9c3f3f",
+      "name": "⚙️ Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [128, 80],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 🎨 Customize for YOUR Business\n\n**In AI Agent node → System Message:**\n1. Replace `[Your Business Name]`\n2. Update `[Your Location]`\n3. List YOUR services with descriptions\n4. Add YOUR contact info & website\n5. Customize the response tone/style\n\n**In Sub-Workflow:**\n- Change timezone in Extract Query Data\n  (default: America/Toronto)\n\n**Alternative AI Models (in Groq node):**\n- `llama-3.3-70b-versatile` ⭐ Best quality\n- `llama-3.1-8b-instant` ⚡ Fastest\n- `mixtral-8x7b-32768` ⚖️ Balanced",
+        "height": 340,
+        "width": 340,
+        "color": 3
+      },
+      "id": "6566b4da-cdcf-41fb-92fb-70e149fe45be",
+      "name": "🎨 Customize",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [584, 80],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {
+          "allowedOrigins": "*",
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "680d6a6a-9217-48cc-9ca8-b9a3cef29dd0",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [-96, 384],
+      "webhookId": "ai-chatbot",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a professional, friendly customer service assistant for [Your Business Name].\n\n## BUSINESS INFO (CUSTOMIZE THIS)\nBusiness Name: [Your Business Name]\nLocation: [Your City, Province/State, Country]\nPhone: [Your Phone Number]\nEmail: [Your Email]\nWebsite: [Your Website]\n\n## SERVICES (CUSTOMIZE THIS)\n- Service 1: [Description]\n- Service 2: [Description]\n- Service 3: [Description]\n\n## COMMUNICATION RULES\n1. ALWAYS respond in the same language the customer uses\n2. Keep answers SHORT and helpful (2-3 sentences max)\n3. Be warm and professional - like a helpful front desk person\n4. For prices: \"Prices vary by service. Let me get your info so our team can prepare a quote for you!\"\n5. Use emoji sparingly (1-2 per message max)\n6. Only answer questions related to YOUR business services\n\n## LEAD COLLECTION - STRUCTURED APPROACH\n\nAfter the customer sends their 2nd message OR shows interest in a service, collect their info ONE FIELD AT A TIME:\n\nStep 1: \"I'd love to help you with that! Could I get your **name** please?\"\nStep 2: \"Thanks [Name]! What's the best **phone number** to reach you?\"\nStep 3: \"And your **email address** so we can send you details?\"\n\nIMPORTANT RULES:\n- Ask ONE question at a time, do NOT ask for all 3 at once\n- Be conversational, not robotic\n- If the customer volunteers multiple pieces of info at once, accept them all\n- Once you have ALL THREE (name, phone, AND email), IMMEDIATELY call Save_Lead_to_Sheet\n- NEVER skip the lead save - it is critical for the business\n\nWhen calling Save_Lead_to_Sheet, you MUST determine:\n- **priority**: 'Hot' (wants service NOW/this week), 'Warm' (interested, comparing options), 'Normal' (just asking questions)\n- **customer_intent**: A clear 1-line description of EXACTLY what the customer wants (e.g., 'Needs website redesign for restaurant, budget around $3000', 'Wants quote for monthly cleaning service', 'Looking for brake repair on 2020 Honda Civic')\n\n## URGENT ALERTS\nUse Send_Urgent_Alert tool when customer mentions:\n- Emergency or urgent situation\n- Complaint or being upset\n- Cancellation request\n- Large order or corporate/bulk account\n\n## END OF CONVERSATION\nWhen customer says thanks/goodbye → Use Send_Conversation_Summary tool\n\n## SESSION INFO\nSession ID: {{ $json.sessionId }}\nUse this session ID when calling any tool"
+        }
+      },
+      "id": "b34bca4f-7d2c-4151-8209-7cbf240857ff",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [208, 384],
+      "typeVersion": 1.6
+    },
+    {
+      "parameters": { "options": {} },
+      "id": "63faae1e-5360-4bc8-a274-57691272cf48",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [624, 368],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": { "maxTokensToSample": 1024, "temperature": 0.3 }
+      },
+      "id": "dfa25ce1-16c1-441f-85ad-acfddff16dc0",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "position": [0, 608],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}",
+        "contextWindowLength": 20
+      },
+      "id": "6b87c8c4-d309-44c9-a45d-88a8ebc838e3",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [128, 608],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "name": "Save_Lead_to_Sheet",
+        "description": "Save customer contact information to Google Sheets. Call this IMMEDIATELY when you have collected ALL THREE: name, phone number, and email address. You MUST determine the priority level and describe exactly what the customer wants in customer_intent.",
+        "workflowId": { "__rl": true, "value": "YOUR_SUB_WORKFLOW_ID", "mode": "id" },
+        "specifyInputSchema": true,
+        "jsonSchemaExample": "{\n  \"action\": \"save_lead\",\n  \"name\": \"Customer's full name\",\n  \"phone\": \"Customer's phone number with area code\",\n  \"email\": \"customer@email.com\",\n  \"service_interest\": \"Web Design\",\n  \"customer_intent\": \"Needs website redesign for restaurant, wants modern look with online ordering\",\n  \"priority\": \"Hot\",\n  \"notes\": \"Customer currently has an outdated WordPress site\",\n  \"sessionId\": \"session-id-here\"\n}"
+      },
+      "id": "97c176e7-e210-4681-8837-d34c2bac9cb5",
+      "name": "Save Lead Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [240, 608],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "name": "Send_Urgent_Alert",
+        "description": "Send urgent alert email to business owner. Use for: emergencies, complaints, cancellations, corporate accounts. Customer won't see this alert. Send: action='urgent_alert', priority (HIGH/MEDIUM), reason, customer_name, customer_phone, customer_email, message_summary, sessionId.",
+        "workflowId": { "__rl": true, "value": "YOUR_SUB_WORKFLOW_ID", "mode": "id" },
+        "specifyInputSchema": true,
+        "jsonSchemaExample": "{\n  \"action\": \"urgent_alert\",\n  \"priority\": \"HIGH\",\n  \"reason\": \"Customer is upset about delayed service\",\n  \"customer_name\": \"John Doe\",\n  \"customer_phone\": \"905-555-1234\",\n  \"customer_email\": \"john@example.com\",\n  \"message_summary\": \"Customer complaint about service delay\",\n  \"sessionId\": \"session-id-here\"\n}"
+      },
+      "id": "664d76da-1e4c-42ad-9e69-7e39dce6499c",
+      "name": "Urgent Alert Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [368, 608],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "name": "Send_Conversation_Summary",
+        "description": "Send conversation summary email when chat ends. Use when customer says thanks/goodbye. Send: action='conversation_summary', customer_name, customer_phone, customer_email, services_discussed, key_points, follow_up_needed, conversation_summary, sessionId.",
+        "workflowId": { "__rl": true, "value": "YOUR_SUB_WORKFLOW_ID", "mode": "id" },
+        "specifyInputSchema": true,
+        "jsonSchemaExample": "{\n  \"action\": \"conversation_summary\",\n  \"customer_name\": \"John Doe\",\n  \"customer_phone\": \"905-555-1234\",\n  \"customer_email\": \"john@example.com\",\n  \"services_discussed\": \"Web design, SEO optimization\",\n  \"key_points\": \"Customer wants modern responsive site\",\n  \"follow_up_needed\": \"Send portfolio examples and quote\",\n  \"conversation_summary\": \"Customer inquired about website redesign for their restaurant...\",\n  \"sessionId\": \"session-id-here\"\n}"
+      },
+      "id": "4a33a96a-79e3-4251-91ee-d6fa81d5ced7",
+      "name": "Conversation Summary Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [480, 608],
+      "typeVersion": 1.2
+    }
+  ],
+  "connections": {
+    "Chat Trigger": { "main": [[{ "node": "AI Agent", "type": "main", "index": 0 }]] },
+    "AI Agent": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] },
+    "Groq Chat Model": { "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]] },
+    "Window Buffer Memory": { "ai_memory": [[{ "node": "AI Agent", "type": "ai_memory", "index": 0 }]] },
+    "Save Lead Tool": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
+    "Urgent Alert Tool": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
+    "Conversation Summary Tool": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true },
+  "pinData": {},
+  "tags": []
+}
